@@ -24,30 +24,42 @@ struct Segment {
 	var refID: Int = 0
 }
 
-class ViewController: UIViewController {
+protocol TargetViewDelegate: class {
+	func segmentTapped(_ refID: Int)
+}
+
+class ViewController: UIViewController, TargetViewDelegate {
 	
-	let tsView: TargetSegmentView = TargetSegmentView()
+	let testView: TargetSegmentView = TargetSegmentView()
 	
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		
-		view.addSubview(tsView)
-		tsView.translatesAutoresizingMaskIntoConstraints = false
+		view.addSubview(testView)
+		testView.translatesAutoresizingMaskIntoConstraints = false
 		
 		let g = view.safeAreaLayoutGuide
 		
 		NSLayoutConstraint.activate([
-			tsView.topAnchor.constraint(equalTo: g.topAnchor, constant: 40.0),
-			tsView.leadingAnchor.constraint(equalTo: g.leadingAnchor, constant: 40.0),
-			tsView.trailingAnchor.constraint(equalTo: g.trailingAnchor, constant: -40.0),
-			tsView.heightAnchor.constraint(equalTo: tsView.widthAnchor),
+			testView.topAnchor.constraint(equalTo: g.topAnchor, constant: 40.0),
+			testView.leadingAnchor.constraint(equalTo: g.leadingAnchor, constant: 40.0),
+			testView.trailingAnchor.constraint(equalTo: g.trailingAnchor, constant: -40.0),
+			testView.heightAnchor.constraint(equalTo: testView.widthAnchor),
 		])
 		
+		testView.delegate = self
+		
+	}
+	
+	func segmentTapped(_ refID: Int) {
+		print("Segment id: \(refID) was tapped!")
 	}
 	
 }
 
 class TargetSegmentView: UIView {
+	
+	weak var delegate: TargetViewDelegate?
 	
 	var outerSegments: [Segment] = [Segment]()
 	var innerSegments: [Segment] = [Segment]()
@@ -65,7 +77,7 @@ class TargetSegmentView: UIView {
 		
 		for i in 1...12 {
 			outerSegments.append(Segment(value: CGFloat(1), color: .yellow, refID: 0 + i))
-			innerSegments.append(Segment(value: CGFloat(1), color: .orange, refID: 100 + i))
+			innerSegments.append(Segment(value: CGFloat(1), color: .green, refID: 100 + i))
 		}
 		for i in 1...2 {
 			innerMostSegments.append(Segment(value: CGFloat(1), color: .cyan, refID: 1000 + i))
@@ -104,7 +116,9 @@ class TargetSegmentView: UIView {
 			}
 		}
 		
-		print("iRef:", iRef)
+		if iRef > -1 {
+			delegate?.segmentTapped(iRef)
+		}
 
 	}
 	
