@@ -17,6 +17,13 @@ extension CGPoint {
 	}
 }
 
+struct Segment {
+	var value: CGFloat = 0
+	var color: UIColor = .cyan
+	var path: UIBezierPath = UIBezierPath()
+	var refID: Int = 0
+}
+
 class ViewController: UIViewController {
 	
 	let tsView: TargetSegmentView = TargetSegmentView()
@@ -36,22 +43,8 @@ class ViewController: UIViewController {
 			tsView.heightAnchor.constraint(equalTo: tsView.widthAnchor),
 		])
 		
-		for family in UIFont.familyNames {
-			
-			let sName: String = family as String
-			print("family: \(sName)")
-			
-			for name in UIFont.fontNames(forFamilyName: sName) {
-				print("name: \(name as String)")
-			}
-		}
 	}
 	
-	
-}
-struct Segment {
-	var value: CGFloat = 0
-	var color: UIColor = .cyan
 }
 
 class TargetSegmentView: UIView {
@@ -71,12 +64,48 @@ class TargetSegmentView: UIView {
 	func commonInit() -> Void {
 		
 		for i in 1...12 {
-			outerSegments.append(Segment(value: CGFloat(1), color: .yellow))
-			innerSegments.append(Segment(value: CGFloat(1), color: .orange))
+			outerSegments.append(Segment(value: CGFloat(1), color: .yellow, refID: 0 + i))
+			innerSegments.append(Segment(value: CGFloat(1), color: .orange, refID: 100 + i))
 		}
 		for i in 1...2 {
-			innerMostSegments.append(Segment(value: CGFloat(1), color: .cyan))
+			innerMostSegments.append(Segment(value: CGFloat(1), color: .cyan, refID: 1000 + i))
 		}
+	}
+	
+	override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+		
+		guard let touch = touches.first else { return }
+		let point = touch.location(in: self)
+		
+		var iRef: Int = -1
+		
+		for seg in outerSegments {
+			if seg.path.contains(point) {
+				iRef = seg.refID
+				break
+			}
+		}
+		
+		if iRef == -1 {
+			for seg in innerSegments {
+				if seg.path.contains(point) {
+					iRef = seg.refID
+					break
+				}
+			}
+		}
+		
+		if iRef == -1 {
+			for seg in innerMostSegments {
+				if seg.path.contains(point) {
+					iRef = seg.refID
+					break
+				}
+			}
+		}
+		
+		print("iRef:", iRef)
+
 	}
 	
 	override func layoutSubviews() {
@@ -93,7 +122,6 @@ class TargetSegmentView: UIView {
 		// initialize local variables
 		var valueCount: CGFloat = 0.0
 		var startAngle: CGFloat = 0
-		var i: Int = 0
 		
 		var outerRadius: CGFloat = 0.0
 		var middleRadius: CGFloat = 0.0
@@ -111,21 +139,22 @@ class TargetSegmentView: UIView {
 		
 		valueCount = outerSegments.reduce(0, {$0 + $1.value})
 		startAngle = 0.0
-		i = 0
 		
-		for segment in outerSegments {
-			let endAngle = startAngle + 2 * .pi * (segment.value / valueCount)
+		for i in 0..<outerSegments.count {
+			let endAngle = startAngle + 2 * .pi * (outerSegments[i].value / valueCount)
 			let shape = CAShapeLayer()
 			let path: UIBezierPath = UIBezierPath()
 			path.addArc(withCenter: viewCenter, radius: outerRadius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
 			path.addArc(withCenter: viewCenter, radius: innerRadius, startAngle: endAngle, endAngle: startAngle, clockwise: false)
 			path.close()
 			shape.path = path.cgPath
-			shape.fillColor = segment.color.cgColor
+			
+			outerSegments[i].path = path
+			
+			shape.fillColor = outerSegments[i].color.cgColor
 			shape.strokeColor = UIColor.black.cgColor
 			shape.borderWidth = 1.0
 			shape.borderColor = UIColor.black.cgColor
-			shape.name = "\(i)"
 			// D
 			//datamap[shape.name ?? ""] = data[i]
 			
@@ -135,7 +164,7 @@ class TargetSegmentView: UIView {
 			
 			textLayer.font = textLayerFont
 			textLayer.fontSize = 20.0
-			let string = "\(i)"
+			let string = "\(outerSegments[i].refID)"
 			textLayer.string = string
 			
 			textLayer.foregroundColor = UIColor.red.cgColor
@@ -154,7 +183,6 @@ class TargetSegmentView: UIView {
 			self.layer.addSublayer(textLayer)
 			
 			startAngle = endAngle
-			i += 1
 		}
 		
 		// middle ring (12 segments)
@@ -164,21 +192,22 @@ class TargetSegmentView: UIView {
 		
 		valueCount = innerSegments.reduce(0, {$0 + $1.value})
 		startAngle = 0
-		i = 100
 		
-		for segment in innerSegments {
-			let endAngle = startAngle + 2 * .pi * (segment.value / valueCount)
+		for i in 0..<innerSegments.count {
+			let endAngle = startAngle + 2 * .pi * (innerSegments[i].value / valueCount)
 			let shape = CAShapeLayer()
 			let path: UIBezierPath = UIBezierPath()
 			path.addArc(withCenter: viewCenter, radius: outerRadius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
 			path.addArc(withCenter: viewCenter, radius: innerRadius, startAngle: endAngle, endAngle: startAngle, clockwise: false)
 			path.close()
 			shape.path = path.cgPath
+			
+			innerSegments[i].path = path
+			
 			shape.strokeColor = UIColor.black.cgColor
-			shape.fillColor = segment.color.cgColor
+			shape.fillColor = innerSegments[i].color.cgColor
 			shape.borderWidth = 1.0
 			shape.borderColor = UIColor.black.cgColor
-			shape.name = "\(i)"
 			// D
 			//datamap[shape.name ?? ""] = data[i-100]
 			
@@ -188,7 +217,7 @@ class TargetSegmentView: UIView {
 			
 			textLayer.font = textLayerFont
 			textLayer.fontSize = 20.0
-			let string = "\(i)"
+			let string = "\(innerSegments[i].refID)"
 			textLayer.string = string
 			
 			textLayer.foregroundColor = UIColor.red.cgColor
@@ -207,7 +236,6 @@ class TargetSegmentView: UIView {
 			self.layer.addSublayer(textLayer)
 			
 			startAngle = endAngle
-			i += 1
 		}
 		
 		// center ring (2 segments)
@@ -217,21 +245,22 @@ class TargetSegmentView: UIView {
 		
 		valueCount = innerMostSegments.reduce(0, {$0 + $1.value})
 		startAngle = 0
-		i = 1000
 		
-		for segment in innerMostSegments {
-			let endAngle = startAngle + 2 * .pi * (segment.value / valueCount)
+		for i in 0..<innerMostSegments.count {
+			let endAngle = startAngle + 2 * .pi * (innerMostSegments[i].value / valueCount)
 			let shape = CAShapeLayer()
 			let path: UIBezierPath = UIBezierPath()
 			path.addArc(withCenter: viewCenter, radius: outerRadius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
 			path.addArc(withCenter: viewCenter, radius: innerRadius, startAngle: endAngle, endAngle: startAngle, clockwise: false)
 			path.close()
 			shape.path = path.cgPath
-			shape.fillColor = segment.color.cgColor
+			
+			innerMostSegments[i].path = path
+			
+			shape.fillColor = innerMostSegments[i].color.cgColor
 			shape.strokeColor = UIColor.black.cgColor
 			shape.borderWidth = 1.0
 			shape.borderColor = UIColor.black.cgColor
-			shape.name = "\(i)"
 			// D
 			//datamap[shape.name ?? ""] = data[i-1000]
 			
@@ -241,7 +270,7 @@ class TargetSegmentView: UIView {
 			
 			textLayer.font = textLayerFont
 			textLayer.fontSize = 20.0
-			let string = "\(i)"
+			let string = "\(innerMostSegments[i].refID)"
 			textLayer.string = string
 			
 			textLayer.foregroundColor = UIColor.red.cgColor
@@ -260,7 +289,6 @@ class TargetSegmentView: UIView {
 			self.layer.addSublayer(textLayer)
 			
 			startAngle = endAngle
-			i += 1
 		}
 	}
 }
