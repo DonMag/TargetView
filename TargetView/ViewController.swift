@@ -8,6 +8,35 @@
 
 import UIKit
 
+class MyButton: UIButton {
+	var path: UIBezierPath?
+	
+	override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+		
+		// Let a hit happen if the point touched is in the path
+		if((path) != nil)
+		{
+			return path!.contains(point)
+		}
+		else
+		{
+			return true
+		}
+	}
+	
+	func touchDown(button: MyButton, event: UIEvent) {
+		if let touch = event.touches(for: button)?.first {
+			let location = touch.location(in: button)
+			
+			if path!.contains(location) == false {
+				button.cancelTracking(with: nil)
+			}
+		}
+		
+	}
+
+}
+
 extension CGPoint {
 	static func pointOnCircle(center: CGPoint, radius: CGFloat, angle: CGFloat) -> CGPoint {
 		let x = center.x + radius * cos(angle)
@@ -41,10 +70,10 @@ class ViewController: UIViewController, TargetViewDelegate {
 		let g = view.safeAreaLayoutGuide
 		
 		NSLayoutConstraint.activate([
-			testView.topAnchor.constraint(equalTo: g.topAnchor, constant: 40.0),
-			testView.leadingAnchor.constraint(equalTo: g.leadingAnchor, constant: 40.0),
-			testView.trailingAnchor.constraint(equalTo: g.trailingAnchor, constant: -40.0),
+			testView.widthAnchor.constraint(equalTo: g.widthAnchor, multiplier: 0.9),
 			testView.heightAnchor.constraint(equalTo: testView.widthAnchor),
+			testView.centerXAnchor.constraint(equalTo: g.centerXAnchor),
+			testView.centerYAnchor.constraint(equalTo: g.centerYAnchor),
 		])
 		
 		testView.delegate = self
@@ -146,6 +175,8 @@ class TargetSegmentView: UIView {
 		let diameter = bounds.width
 		let textLayerFont = CTFontCreateWithName("HelveticaNeue-Light" as CFString, 1, nil)
 		
+		let fontHeight: CGFloat = 14.0 * (bounds.height / 300.0)
+		
 		// outer ring (12 segments)
 		outerRadius = diameter / 6.0 * 3.0
 		innerRadius = diameter / 6.0 * 2.0
@@ -177,7 +208,7 @@ class TargetSegmentView: UIView {
 			let textLayer = CATextLayer()
 			
 			textLayer.font = textLayerFont
-			textLayer.fontSize = 20.0
+			textLayer.fontSize = fontHeight
 			let string = "\(outerSegments[i].refID)"
 			textLayer.string = string
 			
@@ -189,9 +220,29 @@ class TargetSegmentView: UIView {
 			let bisectAngle = startAngle + ((endAngle - startAngle) * 0.5)
 			let p = CGPoint.pointOnCircle(center: viewCenter, radius: middleRadius, angle: bisectAngle)
 			
-			var textLayerframe = CGRect(origin: .zero, size: CGSize(width: 100, height: 20))
+			//textLayer.backgroundColor = UIColor(white: 0.9, alpha: 0.5).cgColor
+			
+			let myAttribute = [ NSAttributedString.Key.font: UIFont(name: "HelveticaNeue-Light", size: fontHeight)! ]
+			let astring = NSAttributedString(string: string, attributes: myAttribute)
+			
+			let line = CTLineCreateWithAttributedString(astring)
+			let glyphRuns = CTLineGetGlyphRuns(line) as! [CTRun]
+			
+			var r: CGRect = .zero
+			for run in glyphRuns {
+				let font = run.font!
+				let glyphs = run.glyphs()
+				let boundingRects = run.boundingRects(for: glyphs, in: font)
+				for br in boundingRects {
+					r.size.width += br.size.width
+					r.size.height = max(r.size.height, br.size.height)
+				}
+			}
+			
+			var textLayerframe = r
 			textLayerframe.origin.x = p.x - (textLayerframe.size.width * 0.5)
 			textLayerframe.origin.y = p.y - (textLayerframe.size.height * 0.5)
+			
 			textLayer.frame = textLayerframe
 			
 			self.layer.addSublayer(textLayer)
@@ -230,7 +281,7 @@ class TargetSegmentView: UIView {
 			let textLayer = CATextLayer()
 			
 			textLayer.font = textLayerFont
-			textLayer.fontSize = 20.0
+			textLayer.fontSize = fontHeight
 			let string = "\(innerSegments[i].refID)"
 			textLayer.string = string
 			
@@ -242,9 +293,29 @@ class TargetSegmentView: UIView {
 			let bisectAngle = startAngle + ((endAngle - startAngle) * 0.5)
 			let p = CGPoint.pointOnCircle(center: viewCenter, radius: middleRadius, angle: bisectAngle)
 			
-			var textLayerframe = CGRect(origin: .zero, size: CGSize(width: 100, height: 20))
+			//textLayer.backgroundColor = UIColor(white: 0.9, alpha: 0.5).cgColor
+			
+			let myAttribute = [ NSAttributedString.Key.font: UIFont(name: "HelveticaNeue-Light", size: fontHeight)! ]
+			let astring = NSAttributedString(string: string, attributes: myAttribute)
+			
+			let line = CTLineCreateWithAttributedString(astring)
+			let glyphRuns = CTLineGetGlyphRuns(line) as! [CTRun]
+			
+			var r: CGRect = .zero
+			for run in glyphRuns {
+				let font = run.font!
+				let glyphs = run.glyphs()
+				let boundingRects = run.boundingRects(for: glyphs, in: font)
+				for br in boundingRects {
+					r.size.width += br.size.width
+					r.size.height = max(r.size.height, br.size.height)
+				}
+			}
+			
+			var textLayerframe = r
 			textLayerframe.origin.x = p.x - (textLayerframe.size.width * 0.5)
 			textLayerframe.origin.y = p.y - (textLayerframe.size.height * 0.5)
+			
 			textLayer.frame = textLayerframe
 			
 			self.layer.addSublayer(textLayer)
@@ -283,7 +354,7 @@ class TargetSegmentView: UIView {
 			let textLayer = CATextLayer()
 			
 			textLayer.font = textLayerFont
-			textLayer.fontSize = 20.0
+			textLayer.fontSize = fontHeight
 			let string = "\(innerMostSegments[i].refID)"
 			textLayer.string = string
 			
@@ -295,15 +366,59 @@ class TargetSegmentView: UIView {
 			let bisectAngle = startAngle + ((endAngle - startAngle) * 0.5)
 			let p = CGPoint.pointOnCircle(center: viewCenter, radius: middleRadius, angle: bisectAngle)
 			
-			var textLayerframe = CGRect(origin: .zero, size: CGSize(width: 100, height: 20))
+			//textLayer.backgroundColor = UIColor(white: 0.9, alpha: 0.5).cgColor
+			
+			let myAttribute = [ NSAttributedString.Key.font: UIFont(name: "HelveticaNeue-Light", size: fontHeight)! ]
+			let astring = NSAttributedString(string: string, attributes: myAttribute)
+			
+			let line = CTLineCreateWithAttributedString(astring)
+			let glyphRuns = CTLineGetGlyphRuns(line) as! [CTRun]
+			
+			var r: CGRect = .zero
+			for run in glyphRuns {
+				let font = run.font!
+				let glyphs = run.glyphs()
+				let boundingRects = run.boundingRects(for: glyphs, in: font)
+				for br in boundingRects {
+					r.size.width += br.size.width
+					r.size.height = max(r.size.height, br.size.height)
+				}
+			}
+			
+			var textLayerframe = r
 			textLayerframe.origin.x = p.x - (textLayerframe.size.width * 0.5)
 			textLayerframe.origin.y = p.y - (textLayerframe.size.height * 0.5)
+
 			textLayer.frame = textLayerframe
 			
 			self.layer.addSublayer(textLayer)
-			
+
 			startAngle = endAngle
+			
 		}
 	}
 }
 
+extension CTRun {
+	var font: CTFont? {
+		let attributes = CTRunGetAttributes(self) as! [CFString: Any]
+		guard let font = attributes[kCTFontAttributeName] else { return nil }
+		return (font as! CTFont)
+	}
+	
+	func glyphs(in range: Range<Int> = 0..<0) -> [CGGlyph] {
+		let count = range.isEmpty ? CTRunGetGlyphCount(self) : range.count
+		var glyphs = Array(repeating: CGGlyph(), count: count)
+		CTRunGetGlyphs(self, CFRangeMake(range.startIndex, range.count), &glyphs)
+		return glyphs
+	}
+	
+	func boundingRects(for glyphs: [CGGlyph], in font: CTFont) -> [CGRect] {
+		var boundingRects = Array(repeating: CGRect(), count: glyphs.count)
+		CTFontGetBoundingRectsForGlyphs(font, .default, glyphs, &boundingRects, glyphs.count)
+		
+		CTFontGetOpticalBoundsForGlyphs(font, glyphs, &boundingRects, glyphs.count, 0)
+		
+		return boundingRects
+	}
+}
