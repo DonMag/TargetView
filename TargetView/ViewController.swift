@@ -50,7 +50,9 @@ struct Segment {
 	var value: CGFloat = 0
 	var color: UIColor = .cyan
 	var path: UIBezierPath = UIBezierPath()
+	var layer: CALayer = CALayer()
 	var refID: Int = 0
+	var label: String = ""
 }
 
 protocol TargetViewDelegate: class {
@@ -61,9 +63,43 @@ class ViewController: UIViewController, TargetViewDelegate {
 	
 	let testView: TargetSegmentView = TargetSegmentView()
 	
+	var outerSegments: [Segment] = [Segment]()
+	var innerSegments: [Segment] = [Segment]()
+	var innerMostSegments: [Segment] = [Segment]()
+	
+	var allSegs: [Segment] = [Segment]()
+	
+
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		
+		let alpha: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		
+		var j: Int = 0
+		let arr = alpha.map { String($0) }
+
+		for i in 1...12 {
+			let s = arr[j]
+			j += 1
+			outerSegments.append(Segment(value: CGFloat(1), color: .yellow, refID: 0 + i, label: s))
+		}
+		for i in 1...12 {
+			let s = arr[j]
+			j += 1
+			innerSegments.append(Segment(value: CGFloat(1), color: .green, refID: 100 + i, label: s))
+		}
+		for i in 1...2 {
+			let s = arr[j]
+			j += 1
+			innerMostSegments.append(Segment(value: CGFloat(1), color: .cyan, refID: 1000 + i, label: s))
+		}
+
+		testView.outerSegments = outerSegments
+		testView.innerSegments = innerSegments
+		testView.innerMostSegments = innerMostSegments
+		
+		allSegs = outerSegments + innerSegments + innerMostSegments
+
 		view.addSubview(testView)
 		testView.translatesAutoresizingMaskIntoConstraints = false
 		
@@ -81,7 +117,12 @@ class ViewController: UIViewController, TargetViewDelegate {
 	}
 	
 	func segmentTapped(_ refID: Int) {
-		print("Segment id: \(refID) was tapped!")
+		//print("Segment id: \(refID) was tapped!")
+		
+		if let seg = allSegs.first(where: {$0.refID == refID}) {
+			print("Segment \(refID) / \(seg.label) was tapped!")
+		}
+		
 	}
 	
 }
@@ -94,6 +135,8 @@ class TargetSegmentView: UIView {
 	var innerSegments: [Segment] = [Segment]()
 	var innerMostSegments: [Segment] = [Segment]()
 	
+	var allSegments: [Segment] = [Segment]()
+	
 	override init(frame: CGRect) {
 		super.init(frame: frame)
 		commonInit()
@@ -104,13 +147,13 @@ class TargetSegmentView: UIView {
 	}
 	func commonInit() -> Void {
 		
-		for i in 1...12 {
-			outerSegments.append(Segment(value: CGFloat(1), color: .yellow, refID: 0 + i))
-			innerSegments.append(Segment(value: CGFloat(1), color: .green, refID: 100 + i))
-		}
-		for i in 1...2 {
-			innerMostSegments.append(Segment(value: CGFloat(1), color: .cyan, refID: 1000 + i))
-		}
+//		for i in 1...12 {
+//			outerSegments.append(Segment(value: CGFloat(1), color: .yellow, refID: 0 + i))
+//			innerSegments.append(Segment(value: CGFloat(1), color: .green, refID: 100 + i))
+//		}
+//		for i in 1...2 {
+//			innerMostSegments.append(Segment(value: CGFloat(1), color: .cyan, refID: 1000 + i))
+//		}
 	}
 	
 	override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -118,11 +161,19 @@ class TargetSegmentView: UIView {
 		guard let touch = touches.first else { return }
 		let point = touch.location(in: self)
 		
+		if let seg: Segment = getSegment(point) {
+			delegate?.segmentTapped(seg.refID)
+		}
+		
+		return()
+
 		var iRef: Int = -1
+		var iSeg: Segment?
 		
 		for seg in outerSegments {
 			if seg.path.contains(point) {
 				iRef = seg.refID
+				iSeg = seg
 				break
 			}
 		}
@@ -131,6 +182,7 @@ class TargetSegmentView: UIView {
 			for seg in innerSegments {
 				if seg.path.contains(point) {
 					iRef = seg.refID
+					iSeg = seg
 					break
 				}
 			}
@@ -140,15 +192,44 @@ class TargetSegmentView: UIView {
 			for seg in innerMostSegments {
 				if seg.path.contains(point) {
 					iRef = seg.refID
+					iSeg = seg
 					break
 				}
 			}
 		}
-		
+
+		if let sg = iSeg {
+			if let l = sg.layer as? CAShapeLayer {
+				l.fillColor = UIColor.orange.cgColor
+			}
+			
+		}
 		if iRef > -1 {
 			delegate?.segmentTapped(iRef)
 		}
 
+	}
+	
+	func getSegment(_ point: CGPoint) -> Segment? {
+		
+		let allSegs: [Segment] = outerSegments + innerSegments + innerMostSegments
+
+		var iSeg: Segment?
+		
+		for seg in allSegs {
+			if seg.path.contains(point) {
+				if let l = seg.layer as? CAShapeLayer {
+					l.fillColor = UIColor.orange.cgColor
+				}
+				iSeg = seg
+			} else {
+				if let l = seg.layer as? CAShapeLayer {
+					l.fillColor = seg.color.cgColor
+				}
+			}
+		}
+		
+		return iSeg
 	}
 	
 	override func layoutSubviews() {
@@ -202,6 +283,8 @@ class TargetSegmentView: UIView {
 			shape.borderColor = UIColor.black.cgColor
 			// D
 			//datamap[shape.name ?? ""] = data[i]
+			outerSegments[i].layer = shape
+			shape.name = "layer\(outerSegments[i].refID)"
 			
 			self.layer.addSublayer(shape)
 			
@@ -209,7 +292,7 @@ class TargetSegmentView: UIView {
 			
 			textLayer.font = textLayerFont
 			textLayer.fontSize = fontHeight
-			let string = "\(outerSegments[i].refID)"
+			let string = outerSegments[i].label // "\(outerSegments[i].refID)"
 			textLayer.string = string
 			
 			textLayer.foregroundColor = UIColor.red.cgColor
@@ -275,14 +358,16 @@ class TargetSegmentView: UIView {
 			shape.borderColor = UIColor.black.cgColor
 			// D
 			//datamap[shape.name ?? ""] = data[i-100]
-			
+			innerSegments[i].layer = shape
+			shape.name = "layer\(innerSegments[i].refID)"
+
 			self.layer.addSublayer(shape)
 			
 			let textLayer = CATextLayer()
 			
 			textLayer.font = textLayerFont
 			textLayer.fontSize = fontHeight
-			let string = "\(innerSegments[i].refID)"
+			let string = innerSegments[i].label // "\(innerSegments[i].refID)"
 			textLayer.string = string
 			
 			textLayer.foregroundColor = UIColor.red.cgColor
@@ -348,14 +433,16 @@ class TargetSegmentView: UIView {
 			shape.borderColor = UIColor.black.cgColor
 			// D
 			//datamap[shape.name ?? ""] = data[i-1000]
-			
+			innerMostSegments[i].layer = shape
+			shape.name = "layer\(innerMostSegments[i].refID)"
+
 			self.layer.addSublayer(shape)
 			
 			let textLayer = CATextLayer()
 			
 			textLayer.font = textLayerFont
 			textLayer.fontSize = fontHeight
-			let string = "\(innerMostSegments[i].refID)"
+			let string = innerMostSegments[i].label // "\(innerMostSegments[i].refID)"
 			textLayer.string = string
 			
 			textLayer.foregroundColor = UIColor.red.cgColor
